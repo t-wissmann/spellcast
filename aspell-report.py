@@ -18,15 +18,16 @@ def parse_aspell_dic_miss_line(line):
     }
     return res
 
+
 def aspell_report_file(lines, aspell_options):
     # see http://aspell.net/man-html/Through-A-Pipe.html
-    aspell_full_command = ['aspell'] + aspell_options + ['-a']
+    aspell_full_command = ['aspell', '-a'] + aspell_options
     proc = subprocess.Popen(aspell_full_command,
                             stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE,
                             text=True)
 
-    out, _ = proc.communicate(input='\n'.join([ '^' + l for l in lines]))
+    out, _ = proc.communicate(input='\n'.join(['^' + l for l in lines]))
     aspell_lines = out.splitlines()
     line_number = 0
     for aspell_report in aspell_lines:
@@ -39,9 +40,11 @@ def aspell_report_file(lines, aspell_options):
         mistake['line'] = line_number
         yield mistake
 
+
 def strip_color_escapes(s):
     """strip all color escape sequences from the given string"""
     return re.sub('\033\\[[^m]*m', '', s)
+
 
 def pretty_print_mistake(lines, mistake, filename):
     prefix = '\033[32m{}\033[36m:\033[33m{}\033[36m:\033[0m' \
@@ -72,11 +75,9 @@ def pretty_print_mistake(lines, mistake, filename):
     print('\n')
 
 def main(args):
-    file_path = sys.argv[1]
-    with open(file_path, 'r') as f:
-        lines = f.readlines()
-        lines = [l.rstrip('\n\r') for l in lines]
-        for f in aspell_report_file(lines, ['-t', '--lang=en_GB-ize']):
-            pretty_print_mistake(lines, f, file_path)
+    lines = sys.stdin.readlines()
+    lines = [l.rstrip('\n\r') for l in lines]
+    for f in aspell_report_file(lines, ['-t', '--lang=en_GB-ize']):
+        pretty_print_mistake(lines, f, '<stdin>')
 
 sys.exit(main(sys.argv))
