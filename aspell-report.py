@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
-import os
+# import os
+import re
 import subprocess
 
 def parse_aspell_dic_miss_line(line):
@@ -38,11 +39,20 @@ def aspell_report_file(lines, aspell_options):
         mistake['line'] = line_number
         yield mistake
 
+def strip_color_escapes(s):
+    """strip all color escape sequences from the given string"""
+    return re.sub('\033\\[[^m]*m', '', s)
+
 def pretty_print_mistake(lines, mistake, filename):
-    prefix = '{}:{}:'.format(filename, mistake['line'])
-    indent =  len(prefix) + mistake['offset']
-    print(prefix + lines[mistake['line']])
-    print(' ' * indent + '~' * len(mistake['word']))
+    prefix = '\033[32m{}\033[36m:\033[33m{}\033[36m:\033[0m' \
+             .format(filename, mistake['line'])
+    indent =  len(strip_color_escapes(prefix)) + mistake['offset']
+    l = lines[mistake['line']]
+    print(prefix + l[0:mistake['offset']] +
+          '\033[1;31m' +
+          l[mistake['offset']:mistake['offset'] + len(mistake['word'])] +
+          '\033[0m' + l[mistake['offset'] + len(mistake['word']):])
+    print(' ' * indent + '\033[1;31m' + '~' * len(mistake['word']) + '\033[0m')
 
     sugg_width = 80
     sugg_prefix = '  Suggestions: '
