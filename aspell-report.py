@@ -24,6 +24,7 @@ def parse_aspell_dic_miss_line(line):
 def aspell_report_file(lines, aspell_options):
     # see http://aspell.net/man-html/Through-A-Pipe.html
     aspell_full_command = ['aspell', '-a'] + aspell_options
+    #print(aspell_full_command)
     proc = subprocess.Popen(aspell_full_command,
                             stdin=subprocess.PIPE,
                             stdout=subprocess.PIPE,
@@ -87,7 +88,7 @@ def main():
     epilog = textwrap.dedent("""\
     EXAMPLE:
       - Check all tex files in the current directory:
-        aspell-report --files *.tex -- -t --lang=en_GB-ize
+        aspell-report --files *.tex -- -t --lang=en_GB --variety ize
     """)
     parser = argparse.ArgumentParser(description=desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
