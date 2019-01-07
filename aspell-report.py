@@ -13,7 +13,7 @@ def parse_aspell_dic_miss_line(line):
     res = {
         'word': metadata[1],
         'offset': int(metadata[3]) - 1, # subtract one for the prefixing '^'
-        'suggestions': line.split(':')[1].split(', ')
+        'suggestions': line.split(': ')[1].split(', ')
     }
     return res
 
@@ -43,8 +43,23 @@ def pretty_print_mistake(lines, mistake, filename):
     indent =  len(prefix) + mistake['offset']
     print(prefix + lines[mistake['line']])
     print(' ' * indent + '~' * len(mistake['word']))
-    print('  Suggestions: {}'.format(', '.join(mistake['suggestions'])))
-    print('')
+
+    sugg_width = 80
+    sugg_prefix = '  Suggestions: '
+    sugg_cur_width = len(sugg_prefix)
+    is_first = True
+    print(sugg_prefix, end='')
+    for s in mistake['suggestions']:
+        if sugg_cur_width + 2 + len(s) > sugg_width and not is_first:
+            print(',\n' + ' ' * len(sugg_prefix), end='')
+            sugg_cur_width = len(sugg_prefix)
+        elif not is_first:
+            print(', ', end='')
+            sugg_cur_width += 2
+        is_first = False
+        print(s, end='')
+        sugg_cur_width += len(s)
+    print('\n')
 
 def main(args):
     file_path = sys.argv[1]
@@ -52,7 +67,6 @@ def main(args):
         lines = f.readlines()
         lines = [l.rstrip('\n\r') for l in lines]
         for f in aspell_report_file(lines, ['-t', '--lang=en_GB-ize']):
-            print(f)
             pretty_print_mistake(lines, f, file_path)
 
 sys.exit(main(sys.argv))
