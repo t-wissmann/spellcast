@@ -39,9 +39,13 @@ def aspell_report_file(lines, aspell_options):
             continue
         if aspell_report[0] in ('*', '@'):
             continue
-        mistake = parse_aspell_dic_miss_line(aspell_report)
-        mistake['line'] = line_number
-        yield mistake
+        if aspell_report[0] in ('#', '+'):
+            # TODO: what to do here?
+            continue
+        if aspell_report[0] == '&':
+            mistake = parse_aspell_dic_miss_line(aspell_report)
+            mistake['line'] = line_number
+            yield mistake
 
 
 def strip_color_escapes(s):
