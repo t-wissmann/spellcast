@@ -2,6 +2,8 @@
 import sys
 # import os
 import re
+import textwrap
+import argparse
 import subprocess
 
 def parse_aspell_dic_miss_line(line):
@@ -74,10 +76,33 @@ def pretty_print_mistake(lines, mistake, filename):
         sugg_cur_width += len(s)
     print('\n')
 
-def main(args):
-    lines = sys.stdin.readlines()
+def check_file(file_handle, file_name, parsed_args):
+    lines = file_handle.readlines()
     lines = [l.rstrip('\n\r') for l in lines]
-    for f in aspell_report_file(lines, ['-t', '--lang=en_GB-ize']):
-        pretty_print_mistake(lines, f, '<stdin>')
+    for report_item in aspell_report_file(lines, parsed_args.backendarg):
+        pretty_print_mistake(lines, report_item, file_name)
 
-sys.exit(main(sys.argv))
+def main():
+    desc = 'Non-interactive spell checking a beautified output'
+    epilog = textwrap.dedent("""\
+    EXAMPLE:
+      - Check all tex files in the current directory:
+        aspell-report --files *.tex -- -t --lang=en_GB-ize
+    """)
+    parser = argparse.ArgumentParser(description=desc,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=epilog)
+    parser.add_argument('--files', metavar='FILE', type=str, nargs='+',
+                        help='Files to check spelling (use stdin if this is empty)')
+    parser.add_argument('backendarg', metavar='BACKENDARG', type=str, nargs='*',
+                        default=[],
+                        help='Arguments passed to the aspell backend')
+    args = parser.parse_args()
+    files = args.files
+    if files is None or files == []:
+        check_file(sys.stdin, '<stdin>', args)
+    else:
+        for fn in files:
+            with open(fn, 'r') as file_handle:
+                check_file(file_handle, fn, args)
+sys.exit(main())
