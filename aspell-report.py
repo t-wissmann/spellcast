@@ -82,10 +82,14 @@ def pretty_print_mistake(lines, mistake, filename):
     print('\n')
 
 def check_file(file_handle, file_name, parsed_args):
+    """check the given file and return the number of mistakes found"""
     lines = file_handle.readlines()
     lines = [l.rstrip('\n\r') for l in lines]
+    count = 0
     for report_item in aspell_report_file(lines, parsed_args.backendarg):
         pretty_print_mistake(lines, report_item, file_name)
+        count += 1
+    return count
 
 def main():
     desc = 'Non-interactive spell checking a beautified output'
@@ -106,12 +110,17 @@ def main():
     parser.add_argument('backendarg', metavar='BACKENDARG', type=str, nargs='*',
                         default=[],
                         help='Arguments passed to the aspell backend')
+    parser.add_argument('--exit-code', dest='exit_code', default=False, action='store_true',
+                        help='Exit code is failure is only 0 if there are not spelling mistakes')
     args = parser.parse_args()
     files = args.files
+    count = 0
     if files is None or files == []:
-        check_file(sys.stdin, '<stdin>', args)
+        count += check_file(sys.stdin, '<stdin>', args)
     else:
         for fn in files:
             with open(fn, 'r') as file_handle:
-                check_file(file_handle, fn, args)
+                count += check_file(file_handle, fn, args)
+    if count > 0 and args.exit_code:
+        return 1
 sys.exit(main())
