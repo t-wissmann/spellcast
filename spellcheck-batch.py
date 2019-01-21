@@ -13,19 +13,29 @@ import argparse
 import subprocess
 
 
-def parse_aspell_dic_miss_line(line):
+def parse_aspell_line_with_suggestions(line):
     """parse a &-line of aspell, including the &-prefix
 
     & WRONGWORD SUGGESTION_COUNT WORD_OFFSET_IN_LINE: SUGESSTIONS, ...
     """
-
     metadata = line.split(':')[0].split(' ')
-    res = {
+    return {
         'word': metadata[1],
         'offset': int(metadata[3]) - 1, # subtract one for the prefixing '^'
         'suggestions': line.split(': ')[1].split(', ')
     }
-    return res
+
+def parse_aspell_line_no_suggestion(line):
+    """parse a #-line of aspell, including the #-prefix
+
+    & WRONGWORD WORD_OFFSET_IN_LINE
+    """
+    metadata = line.split(' ')
+    return {
+        'word': metadata[1],
+        'offset': int(metadata[2]) - 1, # subtract one for the prefixing '^'
+        'suggestions': []
+    }
 
 
 def aspell_report_file(lines, aspell_options):
@@ -50,11 +60,15 @@ def aspell_report_file(lines, aspell_options):
             continue
         if aspell_report[0] in ('*', '@'):
             continue
-        if aspell_report[0] in ('#', '+'):
+        if aspell_report[0] == '+':
             # TODO: what to do here?
             continue
+        if aspell_report[0] == '#':
+            mistake = parse_aspell_line_no_suggestion(aspell_report)
+            mistake['line'] = line_number
+            yield mistake
         if aspell_report[0] == '&':
-            mistake = parse_aspell_dic_miss_line(aspell_report)
+            mistake = parse_aspell_line_with_suggestions(aspell_report)
             mistake['line'] = line_number
             yield mistake
 
@@ -78,6 +92,8 @@ def pretty_print_mistake(lines, mistake, filename):
           '\033[0m' + l[mistake['offset'] + len(mistake['word']):])
     print(' ' * indent + '\033[1;31m' + '~' * len(mistake['word']) + '\033[0m')
 
+    if not mistake['suggestions']:
+        return
     sugg_width = 80
     sugg_prefix = '  Suggestions: '
     sugg_cur_width = len(sugg_prefix)
