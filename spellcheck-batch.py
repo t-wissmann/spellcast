@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
+
+"""
+spellcheck-batch aims to be a wrapper around spell checkers like aspell
+to check texts with a compiler styled command-line user interface.
+"""
+
 import sys
 # import os
 import re
 import textwrap
 import argparse
 import subprocess
+
 
 def parse_aspell_dic_miss_line(line):
     """parse a &-line of aspell, including the &-prefix
@@ -22,6 +29,10 @@ def parse_aspell_dic_miss_line(line):
 
 
 def aspell_report_file(lines, aspell_options):
+    """
+    Given the lines of a file, return a dict with spell checking
+    results and suggestions
+    """
     # see http://aspell.net/man-html/Through-A-Pipe.html
     aspell_full_command = ['aspell', '-a'] + aspell_options
     #print(aspell_full_command)
@@ -48,15 +59,18 @@ def aspell_report_file(lines, aspell_options):
             yield mistake
 
 
-def strip_color_escapes(s):
+def strip_color_escapes(string):
     """strip all color escape sequences from the given string"""
-    return re.sub('\033\\[[^m]*m', '', s)
+    return re.sub('\033\\[[^m]*m', '', string)
 
 
 def pretty_print_mistake(lines, mistake, filename):
+    """Print the given spelling mistake dict, given the filename
+    and all the lines of the file.
+    """
     prefix = '\033[32m{}\033[36m:\033[33m{}\033[36m:\033[0m' \
              .format(filename, mistake['line'])
-    indent =  len(strip_color_escapes(prefix)) + mistake['offset']
+    indent = len(strip_color_escapes(prefix)) + mistake['offset']
     l = lines[mistake['line']]
     print(prefix + l[0:mistake['offset']] +
           '\033[1;31m' +
@@ -91,7 +105,9 @@ def check_file(file_handle, file_name, parsed_args):
         count += 1
     return count
 
+
 def main():
+    """The main."""
     desc = 'Non-interactive spell checking a beautified output'
     epilog = textwrap.dedent("""\
     EXAMPLE:
@@ -102,7 +118,8 @@ def main():
         where wordlist.txt is a file starting with "personal_ws-1.1 en 1 "
         followed by all words in the wordlist.
     """)
-    parser = argparse.ArgumentParser(description=desc,
+    parser = argparse.ArgumentParser(
+        description=desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=epilog)
     parser.add_argument('--files', metavar='FILE', type=str, nargs='+',
@@ -118,9 +135,11 @@ def main():
     if files is None or files == []:
         count += check_file(sys.stdin, '<stdin>', args)
     else:
-        for fn in files:
-            with open(fn, 'r') as file_handle:
-                count += check_file(file_handle, fn, args)
+        for filename in files:
+            with open(filename, 'r') as file_handle:
+                count += check_file(file_handle, filename, args)
     if count > 0 and args.exit_code:
         return 1
+    return 0
+
 sys.exit(main())
