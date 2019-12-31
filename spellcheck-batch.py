@@ -111,17 +111,52 @@ def pretty_print_mistake(lines, mistake, filename):
         sugg_cur_width += len(s)
     print('\n')
 
+
 def output_mistake_list(lines, file_name, mistakes):
     for report_item in mistakes:
         pretty_print_mistake(lines, report_item, file_name)
 
-def check_file(file_handle, file_name, parsed_args):
+
+def output_augmented_input(lines, file_name, mistakes):
+    line2mistakes = {}
+    for report_item in mistakes:
+        n = report_item['line']
+        mistakes = line2mistakes.get(n, [])
+        mistakes.append(report_item)
+        line2mistakes[n] = mistakes
+    for n, l in enumerate(lines):
+        # if there are no mistakes in this line
+        # then just print it
+        if n not in line2mistakes:
+            print(l)
+            continue
+        # if there are mistakes in this line, then highlight them
+        mistakes = line2mistakes.get(n, [])
+        offset2mistake = {}
+        for m in mistakes:
+            offset2mistake[m['offset']] = m
+        output = ""
+        endoffset = -1
+        for offset, ch in enumerate(l + '\n'):
+            if offset == endoffset:
+                output += '\033[0m'
+                endoffset = -1
+            if offset in offset2mistake:
+                mistake = offset2mistake[offset]
+                endoffset = offset + len(mistake['word'])
+                output += '\033[1;31m'
+            output += str(ch)
+        print(output, end='')
+
+
+def check_file(file_handle, file_name, parsed_args, output_function):
     """check the given file and return the number of mistakes found"""
     lines = file_handle.readlines()
     lines = [l.rstrip('\n\r') for l in lines]
     mistakes = list(aspell_report_file(lines, parsed_args.backendarg))
-    output_mistake_list(lines, file_name, mistakes)
+    output_function(lines, file_name, mistakes)
     return len(mistakes)
+
 
 def main():
     """The main."""
@@ -154,7 +189,7 @@ def main():
     else:
         for filename in files:
             with open(filename, 'r') as file_handle:
-                count += check_file(file_handle, filename, args)
+                count += check_file(file_handle, filename, args, output_augmented_input)
     if count > 0 and args.exit_code:
         return 1
     return 0
