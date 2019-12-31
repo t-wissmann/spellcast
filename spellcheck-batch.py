@@ -181,15 +181,23 @@ def main():
                         help='Arguments passed to the aspell backend')
     parser.add_argument('--exit-code', dest='exit_code', default=False, action='store_true',
                         help='Exit code is failure is only 0 if there are not spelling mistakes')
+    output_modes = {
+        'augmented': output_augmented_input,
+        'list': output_mistake_list,
+    }
+    parser.add_argument('--output-mode', dest='output_mode',
+                        choices=output_modes.keys(),
+                        help='Style of output', default='augmented')
     args = parser.parse_args()
     files = args.files
     count = 0
+    output_function = output_modes[args.output_mode]
     if files is None or files == []:
-        count += check_file(sys.stdin, '<stdin>', args)
+        count += check_file(sys.stdin, '<stdin>', args, output_function)
     else:
         for filename in files:
             with open(filename, 'r') as file_handle:
-                count += check_file(file_handle, filename, args, output_augmented_input)
+                count += check_file(file_handle, filename, args, output_function)
     if count > 0 and args.exit_code:
         return 1
     return 0
