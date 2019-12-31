@@ -111,16 +111,17 @@ def pretty_print_mistake(lines, mistake, filename):
         sugg_cur_width += len(s)
     print('\n')
 
+def output_mistake_list(lines, file_name, mistakes):
+    for report_item in mistakes:
+        pretty_print_mistake(lines, report_item, file_name)
+
 def check_file(file_handle, file_name, parsed_args):
     """check the given file and return the number of mistakes found"""
     lines = file_handle.readlines()
     lines = [l.rstrip('\n\r') for l in lines]
-    count = 0
-    for report_item in aspell_report_file(lines, parsed_args.backendarg):
-        pretty_print_mistake(lines, report_item, file_name)
-        count += 1
-    return count
-
+    mistakes = list(aspell_report_file(lines, parsed_args.backendarg))
+    output_mistake_list(lines, file_name, mistakes)
+    return len(mistakes)
 
 def main():
     """The main."""
