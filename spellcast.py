@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 """
-spellcheck-batch aims to be a wrapper around spell checkers like aspell
+spellcast - spell_ing c_heck a_nd s_tylish t_opping
+
+spellcast aims to be a wrapper around spell checkers like aspell
 to check texts with a compiler styled command-line user interface.
 """
 
