@@ -166,12 +166,12 @@ def main():
     epilog = textwrap.dedent("""\
     EXAMPLE:
       - Check all tex files in the current directory:
-        aspell-report --files *.tex -- -t --lang=en_GB --variety ize
+        {progname} --files *.tex -- -t --lang=en_GB --variety ize
       - Use an aspell wordlist:
-        aspell-report --files *.tex -- -t --lang=en_GB --variety ize -p ./wordlist.txt
+        {progname} --files *.tex -- -t --lang=en_GB --variety ize -p ./wordlist.txt
         where wordlist.txt is a file starting with "personal_ws-1.1 en 1 "
         followed by all words in the wordlist.
-    """)
+    """.format(progname=sys.argv[0]))
     parser = argparse.ArgumentParser(
         description=desc,
         formatter_class=argparse.RawDescriptionHelpFormatter,
