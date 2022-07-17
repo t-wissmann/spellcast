@@ -177,7 +177,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=epilog)
     parser.add_argument('--files', metavar='FILE', type=str, nargs='+',
-                        help='Files to check spelling (use stdin if this is empty)')
+                        help='Files to check spelling (use stdin if this is empty). Text and PDF files are supported.')
     parser.add_argument('backendarg', metavar='BACKENDARG', type=str, nargs='*',
                         default=[],
                         help='Arguments passed to the aspell backend')
@@ -198,8 +198,15 @@ def main():
         count += check_file(sys.stdin, '<stdin>', args, output_function)
     else:
         for filename in files:
-            with open(filename, 'r') as file_handle:
-                count += check_file(file_handle, filename, args, output_function)
+            if re.match(r'.*\.pdf$', filename):
+                pdf2text_cmd = ['pdftotext', '-layout', '-nopgbrk', filename, '-']
+                pdfproc = subprocess.Popen(pdf2text_cmd, stdout=subprocess.PIPE, universal_newlines=True)
+                count += check_file(pdfproc.stdout, filename, args, output_function)
+                pdfproc.terminate()
+                pdfproc.wait()
+            else:
+                with open(filename, 'r') as file_handle:
+                    count += check_file(file_handle, filename, args, output_function)
     if count > 0 and args.exit_code:
         return 1
     return 0
