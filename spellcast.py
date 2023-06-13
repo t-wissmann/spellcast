@@ -13,8 +13,18 @@ import re
 import textwrap
 import argparse
 import subprocess
+import json
+import bisect
 
+## General comments on backends:
+## A backend function should return multiple objects via 'yield'.
+## Each object must be one 'mistake' and should have the following fields:
+##   - 'word' a string containing the wrong word
+##   - 'line' the line in the input file
+##   - 'offset' the position of the word in the line
+##   - 'suggestions' a list of strings containing suggestions
 
+## Backend: Aspell
 def parse_aspell_line_with_suggestions(line):
     """parse a &-line of aspell, including the &-prefix
 
@@ -73,6 +83,56 @@ def aspell_report_file(lines, aspell_options):
             mistake = parse_aspell_line_with_suggestions(aspell_report)
             mistake['line'] = line_number
             yield mistake
+
+
+## Backend: Languagetool
+def languagetool_report_file(lines, languagetool_options):
+    """
+    Given the lines of a file, return a dict with spell checking
+    results and suggestions
+    """
+    # the accumulated line lengths. for each line, the number of characters before
+    total_line_len = 0
+    acc_line_lengths = []
+    for l in lines:
+        acc_line_lengths.append(total_line_len)
+        total_line_len += len(l) + len('\n')
+    acc_line_lengths.append(total_line_len)
+
+    # run language tool
+    full_input_buf = '\n'.join(lines)
+    lt_full_command = ['languagetool', '--json', '-c', 'utf-8'] + languagetool_options
+    proc = subprocess.Popen(lt_full_command,
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE,
+                            text=True)
+    out, _ = proc.communicate(input=full_input_buf)
+
+    # discard everything in stdout until the first empty line:
+    json_lines = []
+    empty_line_found = False
+    for line in out.splitlines():
+        if empty_line_found:
+            json_lines.append(line)
+        else:
+            if line == '':
+                empty_line_found = True
+    lt_result = json.loads('\n'.join(json_lines))
+    print(f'number of matches = {len(lt_result["matches"])}')
+    for m in lt_result['matches']:
+        offset = m['offset']
+        length = m['length']
+        line = bisect.bisect_left(acc_line_lengths, offset),
+        # the returned value is something like (1,)
+        line = line[0]
+        mistake = {
+          'line': line - 1,
+          'offset': offset - acc_line_lengths[line - 1],
+          'word': full_input_buf[offset : offset + length],
+          'suggestions': [],
+        }
+        # print(mistake)
+        yield mistake
 
 
 def strip_color_escapes(string):
@@ -151,21 +211,35 @@ def output_augmented_input(lines, file_name, mistakes):
         print(output, end='')
 
 
+AVAILABLE_BACKENDS = {
+    'aspell': aspell_report_file,
+    'languagetool': languagetool_report_file,
+    'lt': languagetool_report_file,
+}
+
+
 def check_file(file_handle, file_name, parsed_args, output_function):
     """check the given file and return the number of mistakes found"""
     lines = file_handle.readlines()
     lines = [l.rstrip('\n\r') for l in lines]
-    mistakes = list(aspell_report_file(lines, parsed_args.backendarg))
+    global AVAILABLE_BACKENDS
+    callback = AVAILABLE_BACKENDS[parsed_args.backend]
+    mistakes = list(callback(lines, parsed_args.backendarg))
     output_function(lines, file_name, mistakes)
     return len(mistakes)
 
 
 def main():
     """The main."""
+    global AVAILABLE_BACKENDS
+    default_backend = 'aspell'
+    assert default_backend in AVAILABLE_BACKENDS
     desc = 'Non-interactive spell checking a beautified output'
     epilog = textwrap.dedent("""\
     EXAMPLE:
-      - Check all tex files in the current directory:
+      - Check a pdf file
+        {progname} --files some.pdf -- --lang=en_US
+      - Check all tex files in the current directory with british-ize:
         {progname} --files *.tex -- -t --lang=en_GB --variety ize
       - Use an aspell wordlist:
         {progname} --files *.tex -- -t --lang=en_GB --variety ize -p ./wordlist.txt
@@ -178,9 +252,13 @@ def main():
         epilog=epilog)
     parser.add_argument('--files', metavar='FILE', type=str, nargs='+',
                         help='Files to check spelling (use stdin if this is empty). Text and PDF files are supported.')
+    parser.add_argument('-b', '--backend', choices=AVAILABLE_BACKENDS.keys(),
+                        default=default_backend,
+                        help=f'Spell checker to use (default: {default_backend})')
     parser.add_argument('backendarg', metavar='BACKENDARG', type=str, nargs='*',
                         default=[],
                         help='Arguments passed to the aspell backend')
+
     parser.add_argument('--exit-code', dest='exit_code', default=False, action='store_true',
                         help='Exit code is failure is only 0 if there are not spelling mistakes')
     output_modes = {

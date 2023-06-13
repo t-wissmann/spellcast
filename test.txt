@@ -1,12 +1,11 @@
-Did you spot the spelling misteke in this line? If you have aspell installed,
+Did you spot the the spelling misteke in this line? If you have aspell installed,
 you can simply run the following:
 
-    ./spellcheck-batch.py -- --lang=en < test.txt
+    ./spellcast.py -- --lang=en < test.txt
 
-If you don't want to see suggestions, you can pass the respective aspell
-option:
+If you have languagetool installed, you can even run:
 
-    ./spellcheck-batch.py -- --lang=en --dont-suggest < test.txt
+    ./spellcast.py -b lt -- -l en-US < test.txt
 
 There is not much more to see, because all the main work is done by the spell
 checker, which is aspell by default. Hence, spellcheck-batch does not have a
