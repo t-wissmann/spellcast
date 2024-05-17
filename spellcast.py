@@ -108,16 +108,21 @@ def languagetool_report_file(lines, languagetool_options):
                             text=True)
     out, _ = proc.communicate(input=full_input_buf)
 
-    # discard everything in stdout until the first empty line:
-    json_lines = []
-    empty_line_found = False
-    for line in out.splitlines():
-        if empty_line_found:
-            json_lines.append(line)
-        else:
-            if line == '':
-                empty_line_found = True
-    lt_result = json.loads('\n'.join(json_lines))
+    # in older versions of languagetool:
+    discard_lt_output_until_first_empty_line = False
+    if discard_lt_output_until_first_empty_line:
+        # discard everything in stdout until the first empty line:
+        json_lines = []
+        empty_line_found = False
+        for line in out.splitlines():
+            if empty_line_found:
+                json_lines.append(line)
+            else:
+                if line == '':
+                    empty_line_found = True
+        # overwrite 'out' again
+        out = '\n'.join(json_lines)
+    lt_result = json.loads(out)
     print(f'number of matches = {len(lt_result["matches"])}')
     for m in lt_result['matches']:
         offset = m['offset']
